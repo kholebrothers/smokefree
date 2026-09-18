@@ -1,0 +1,33 @@
+# Betriebssystem und Editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Abhängigkeiten und Baureste
+node_modules/
+dist/
+.wrangler/
+
+# Geheimnisse — nichts davon gehört je in ein öffentliches Repo
+.env
+.env.*
+.dev.vars
+*.pem
+*.key
+*.p12
+*.keystore
+secrets.*
+
+# Persönliche Daten aus dem Tuner.
+# Der Tuner erzeugt echte Konsum- und Gesundheitsdaten. Exporte, Dumps und
+# Sicherungen bleiben auf dem Gerät — auch in einem privaten Repo.
+daten/
+export/
+*.export.json
+laeufe*.json
+rueckmeldungen*.json
+
+# Der Artifact-Link ist ein Zugriffsschlüssel, keine Adresse.
+LINK.local
+*.local

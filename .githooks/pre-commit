@@ -1,0 +1,89 @@
+#!/bin/sh
+# =====================================================================
+# Vorsichtsregeln für ein öffentliches Repo
+#
+# Der Haken prüft, was gerade eingecheckt werden soll — nicht den
+# Arbeitsbaum. Er blockt, statt zu warnen: eine Warnung, die man
+# wegdrücken kann, ist in einem öffentlichen Repo keine Regel.
+#
+# Umgehen geht mit `git commit --no-verify`, wenn man weiß, warum.
+# Eingeschaltet wird der Haken über `git config core.hooksPath .githooks`
+# (steht schon; nach einem frischen `clone` einmal nachziehen).
+# =====================================================================
+
+set -eu
+fehler=0
+rot() { printf '\033[31m%s\033[0m\n' "$1"; }
+
+dateien=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$dateien" ] && exit 0
+
+# --- 1. Dateien, die es nie sein dürfen ------------------------------
+for f in $dateien; do
+  case "$f" in
+    .env|.env.*|*.pem|*.key|*.p12|*.keystore|.dev.vars|secrets.*)
+      rot "BLOCKIERT  $f — Geheimnisdatei"; fehler=1 ;;
+    daten/*|export/*|*.export.json)
+      rot "BLOCKIERT  $f — persönliche Tracking-Daten"; fehler=1 ;;
+    LINK.local|*.local)
+      rot "BLOCKIERT  $f — lokale Datei, gehört nicht ins Repo"; fehler=1 ;;
+  esac
+done
+
+# --- 2. Große Dateien ------------------------------------------------
+# Ein Repo ohne Build-Schritt hat keinen Grund, etwas über 1 MB zu tragen.
+for f in $dateien; do
+  [ -f "$f" ] || continue
+  gr=$(wc -c < "$f" | tr -d ' ')
+  if [ "$gr" -gt 1048576 ]; then
+    rot "BLOCKIERT  $f — $((gr/1024)) KB, größer als 1 MB"; fehler=1
+  fi
+done
+
+# --- 3. Geheimnisse im Inhalt ----------------------------------------
+# Absichtlich eng gefasst: Muster, die praktisch nie ein falsches
+# Positiv erzeugen. Ein Haken, der ständig grundlos anschlägt, wird
+# abgeschaltet, und dann schützt er gar nichts mehr.
+muster='BEGIN [A-Z ]*PRIVATE KEY|sk-ant-[A-Za-z0-9-]{20}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{50}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10}|AIza[0-9A-Za-z_-]{35}'
+treffer=$(git diff --cached -U0 -- $dateien | grep -nE "^\+.*($muster)" || true)
+if [ -n "$treffer" ]; then
+  rot "BLOCKIERT  sieht nach einem Schlüssel oder Token aus:"
+  printf '%s\n' "$treffer" | head -5 | sed 's/^/           /'
+  fehler=1
+fi
+
+# --- 4. Artifact-Links -----------------------------------------------
+# Ein claude.ai-Artifact-Link ist ein Zugriffsschlüssel. In einem
+# öffentlichen Repo ist er eine offene Tür, kein Verweis.
+#
+# Verlangt wird eine echte Kennung von mindestens 16 Zeichen. Über die
+# Regel selbst zu schreiben — "ein claude.ai/artifact/…-Link" — muss
+# erlaubt bleiben: ein Haken, der seine eigene Dokumentation blockiert,
+# bringt der Reihe nach allen `--no-verify` bei und schützt dann nichts.
+links=$(git diff --cached -U0 -- $dateien | grep -nE '^\+.*claude\.ai/(public/)?artifacts?/[A-Za-z0-9_-]{16,}' || true)
+if [ -n "$links" ]; then
+  rot "BLOCKIERT  Artifact-Link im Text — der gehört nach LINK.local:"
+  printf '%s\n' "$links" | head -3 | sed 's/^/           /'
+  fehler=1
+fi
+
+# --- 5. Echte Konsumdaten in Quelldateien ----------------------------
+# Beispieldaten sind erlaubt, echte Läufe nicht. Ein eingecheckter
+# Zustand mit Zeitstempeln ist ein Gesundheitsdatensatz.
+#
+# Gesucht wird ein tatsächlicher Eintrag — ein Objekt mit "nr" oder
+# "zeit" darin. Die Form in der Prosa, "zigaretten": [{…}], ist keine
+# Zählung und darf beschrieben werden.
+roh=$(git diff --cached -U0 -- $dateien |
+  grep -cE '^\+.*"zigaretten"[[:space:]]*:[[:space:]]*\[[[:space:]]*\{[^}]*"(nr|zeit)"' || true)
+if [ "${roh:-0}" -gt 0 ]; then
+  rot "BLOCKIERT  echte Zählungen ('zigaretten' mit Einträgen) im Commit"
+  fehler=1
+fi
+
+if [ "$fehler" -ne 0 ]; then
+  echo
+  echo "Commit gestoppt. Bewusst trotzdem: git commit --no-verify"
+  exit 1
+fi
+exit 0

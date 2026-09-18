@@ -1,0 +1,360 @@
+<title>Rauch-Tuner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* =====================================================================
+   Eine gedämpfte warme Palette, dazu Inter fürs Interface und für alle
+   Zahlen und Source Serif 4 für das, was die App selbst sagt.
+   Das ist Absicht: Messwerte sollen nicht wissenschaftlich wichtiger
+   aussehen als eine subjektive Bemerkung.
+
+   Die Werkbank darum herum ist bewusst nüchtern gehalten — dünne
+   Linien, Kapitälchen-Marken, ein kühles Blaugrün für alles Bedienbare. Das
+   Modul in der Mitte ist das Warme; der Tuner ist das Werkzeug.
+   ===================================================================== */
+:root{
+  --paper:#F5F1E8; --surface:#FFFDF7; --ink:#20231F; --leise:#6E7263;
+  --moss:#6E7762; --clay:#A66E55; --mist:#C8CFCD; --teal:#315D60;
+  --linie:#E2DDD0; --linie-stark:#CFC8B7; --ton-gut:#6E7762;
+  --ton-mittel:#9A937F; --ton-stoert:#A66E55; --schatten:0 1px 0 rgba(32,35,31,.04);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#171A16; --surface:#1F231D; --ink:#EAE6DA; --leise:#9AA08C;
+  --moss:#9BA789; --clay:#C98D72; --mist:#49524E; --teal:#79AFB2;
+  --linie:#2E332B; --linie-stark:#3E453A; --ton-gut:#9BA789;
+  --ton-mittel:#A49C85; --ton-stoert:#C98D72; --schatten:none;
+}}
+:root[data-theme="dark"]{
+  --paper:#171A16; --surface:#1F231D; --ink:#EAE6DA; --leise:#9AA08C;
+  --moss:#9BA789; --clay:#C98D72; --mist:#49524E; --teal:#79AFB2;
+  --linie:#2E332B; --linie-stark:#3E453A; --ton-gut:#9BA789;
+  --ton-mittel:#A49C85; --ton-stoert:#C98D72; --schatten:none;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font:15px/1.5 Inter,system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font:inherit; color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--teal); outline-offset:2px; border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+
+/* ---- Kopf ---------------------------------------------------------- */
+.kopf{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:20;
+  background:var(--paper); border-bottom:1px solid var(--linie);
+}
+.kopf-in{max-width:620px; margin:0 auto; padding:10px 16px 0; display:flex; flex-direction:column; gap:8px}
+.kopf-reihe{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.marke{
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--leise); font-weight:600; flex:none;
+}
+.laufknopf{
+  background:transparent; border:1px solid var(--linie-stark); border-radius:999px;
+  padding:4px 11px; font-size:13px; font-weight:500; color:var(--teal);
+  display:inline-flex; align-items:center; gap:6px; min-width:0;
+}
+.laufknopf b{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.datum{margin-left:auto; display:flex; align-items:center; gap:2px; flex:none}
+.datum button{
+  background:transparent; border:0; color:var(--leise); padding:4px 7px;
+  font-size:15px; line-height:1; border-radius:6px;
+}
+.datum button:disabled{opacity:.3; cursor:default}
+.datum .heute{
+  font-variant-numeric:tabular-nums; font-size:12px; color:var(--ink);
+  padding:4px 6px; letter-spacing:.01em;
+}
+.datum .heute.zurueck{color:var(--clay); font-weight:600}
+
+/* Die Ortsleiste — drei Orte, kein vierter. */
+.orte{display:flex; gap:2px}
+.orte button{
+  background:transparent; border:0; border-bottom:2px solid transparent;
+  padding:8px 2px 9px; margin-right:18px; font-size:14px; color:var(--leise);
+}
+.orte button[aria-current="page"]{color:var(--ink); border-bottom-color:var(--teal); font-weight:500}
+.orte .zahl{
+  font-size:11px; color:var(--leise); font-variant-numeric:tabular-nums;
+  margin-left:5px; border:1px solid var(--linie-stark); border-radius:999px; padding:0 5px;
+}
+
+/* ---- Blatt --------------------------------------------------------- */
+main{max-width:620px; margin:0 auto; padding:14px 16px 96px}
+.karte{
+  background:var(--surface); border:1px solid var(--linie); border-radius:12px;
+  padding:14px; margin-bottom:12px; box-shadow:var(--schatten);
+}
+.karte-kopf{display:flex; align-items:baseline; gap:8px; margin-bottom:10px}
+.rubrik{
+  font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--leise); font-weight:600; margin:0;
+}
+.karte-kopf .stand{margin-left:auto; font-size:12px; color:var(--leise); font-variant-numeric:tabular-nums}
+
+/* Der offene Kreis: das Rückmeldezeichen. Kein Fortschrittsring. */
+.fb-auf{
+  margin-left:auto; flex:none; width:24px; height:24px; border-radius:50%;
+  background:transparent; border:1px solid var(--linie-stark); color:var(--leise);
+  font-size:11px; line-height:1; display:grid; place-items:center;
+}
+.fb-auf:hover,.fb-auf[aria-expanded="true"]{border-color:var(--teal); color:var(--teal)}
+.karte-kopf .fb-auf + .stand{margin-left:8px}
+
+/* ---- Der Zähler ---------------------------------------------------- */
+.zaehler{text-align:center; padding:4px 0 2px}
+.zahl-gross{
+  font-size:54px; line-height:1; font-weight:600; font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em; display:block;
+}
+.zahl-gross.null{color:var(--mist)}
+.einheit{display:block; font-size:12px; color:var(--leise); margin-top:6px}
+.stufenwort{
+  font-family:"Source Serif 4",Georgia,serif; font-size:15px; color:var(--leise);
+  margin:12px 0 0; text-wrap:balance;
+}
+.stufenwort.ueber{color:var(--clay)}
+
+/* Punktreihe */
+.punkte{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:16px 0 4px}
+.punkte .p{
+  width:13px; height:13px; border-radius:50%; border:1px solid var(--mist); flex:none;
+}
+.punkte .p.an{background:var(--clay); border-color:var(--clay)}
+.punkte .p.ueber{background:var(--clay); border-color:var(--clay); box-shadow:0 0 0 3px color-mix(in srgb,var(--clay) 18%,transparent)}
+.punkte .p.rand{border-style:dashed; border-color:var(--linie-stark)}
+
+/* Offener Kreis */
+.ringfeld{display:grid; place-items:center; margin:10px 0 2px}
+.ringfeld svg{width:172px; height:172px; max-width:100%}
+
+/* Große Taste */
+.tastefeld{margin:14px 0 4px}
+
+.tippen{
+  width:100%; border:0; border-radius:12px; background:var(--clay); color:#FFFDF7;
+  padding:15px 16px; font-size:16px; font-weight:600; letter-spacing:.01em;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.tippen:active{transform:translateY(1px)}
+.tippen.taste{padding:30px 16px; font-size:19px; border-radius:16px}
+.tippen .sub{font-weight:400; font-size:13px; opacity:.85}
+
+.unterknoepfe{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap}
+.leise-knopf{
+  flex:1 1 0; min-width:120px; background:transparent; border:1px solid var(--linie-stark);
+  border-radius:10px; padding:9px 12px; font-size:13px; color:var(--leise);
+}
+.leise-knopf.an{border-color:var(--moss); color:var(--moss); background:color-mix(in srgb,var(--moss) 8%,transparent)}
+
+/* ---- Die Nachfrage ------------------------------------------------- */
+.angebot{
+  margin-top:12px; padding-top:11px; border-top:1px dashed var(--linie-stark);
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.angebot p{
+  margin:0; flex:1 1 180px; font-family:"Source Serif 4",Georgia,serif;
+  font-size:15px; color:var(--ink);
+}
+.angebot .weg{background:transparent; border:0; color:var(--leise); font-size:13px; padding:6px 4px}
+.angebot .hin{
+  background:transparent; border:1px solid var(--teal); color:var(--teal);
+  border-radius:999px; padding:6px 13px; font-size:13px; font-weight:500;
+}
+.offen-zahl{
+  margin-top:12px; padding-top:11px; border-top:1px dashed var(--linie-stark);
+  font-size:13px; color:var(--leise); display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+}
+
+.feld{display:block; margin-top:12px}
+.feld > span{
+  display:block; font-family:"Source Serif 4",Georgia,serif; font-size:15px;
+  margin-bottom:5px; text-wrap:balance;
+}
+.feld textarea,.feld input[type="text"]{
+  width:100%; background:var(--paper); border:1px solid var(--linie-stark);
+  border-radius:8px; padding:9px 10px; font-size:15px; resize:vertical;
+}
+.feld textarea:focus,.feld input:focus{border-color:var(--teal); outline:none}
+
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.chip{
+  background:transparent; border:1px solid var(--linie-stark); border-radius:999px;
+  padding:5px 11px; font-size:13px; color:var(--leise);
+}
+.chip[aria-pressed="true"]{border-color:var(--moss); color:var(--moss); background:color-mix(in srgb,var(--moss) 10%,transparent)}
+.chip.ton-gut[aria-pressed="true"]{border-color:var(--ton-gut); color:var(--ton-gut); background:color-mix(in srgb,var(--ton-gut) 12%,transparent)}
+.chip.ton-mittel[aria-pressed="true"]{border-color:var(--ton-mittel); color:var(--ton-mittel); background:color-mix(in srgb,var(--ton-mittel) 12%,transparent)}
+.chip.ton-stoert[aria-pressed="true"]{border-color:var(--ton-stoert); color:var(--ton-stoert); background:color-mix(in srgb,var(--ton-stoert) 12%,transparent)}
+
+.merken{
+  margin-top:11px; width:100%; background:var(--teal); color:#FFFDF7; border:0;
+  border-radius:10px; padding:11px; font-size:15px; font-weight:500;
+}
+.merken.leise{background:transparent; color:var(--teal); border:1px solid var(--teal)}
+
+/* ---- Das Vorhaben -------------------------------------------------- */
+.vorhaben-satz{
+  font-family:"Source Serif 4",Georgia,serif; font-size:19px; margin:0 0 4px;
+  text-wrap:balance; line-height:1.3;
+}
+.vorhaben-stand{font-size:13px; color:var(--leise)}
+.credo{
+  font-family:"Source Serif 4",Georgia,serif; font-size:15px; margin:12px 0 0;
+  padding:11px 12px; background:var(--paper); border-radius:9px;
+  border-left:2px solid var(--moss); text-wrap:pretty;
+}
+.credo b{font-weight:600}
+.notiz-gestern{
+  font-family:"Source Serif 4",Georgia,serif; font-style:italic; font-size:14px;
+  color:var(--leise); margin:0 0 10px;
+}
+
+/* ---- Die Tagesspur ------------------------------------------------- */
+.spur{list-style:none; margin:0; padding:0}
+.spur li{
+  display:flex; gap:11px; padding:8px 0; border-top:1px solid var(--linie);
+  align-items:baseline;
+}
+.spur li:first-child{border-top:0}
+.spur .uhr{
+  font-variant-numeric:tabular-nums; font-size:13px; color:var(--leise);
+  flex:none; width:44px;
+}
+.spur .nr{
+  flex:none; width:22px; height:22px; border-radius:50%; border:1px solid var(--clay);
+  color:var(--clay); font-size:11px; display:grid; place-items:center;
+  font-variant-numeric:tabular-nums;
+}
+.spur .was{flex:1; min-width:0; font-size:14px}
+.spur .was em{
+  display:block; font-family:"Source Serif 4",Georgia,serif; font-style:normal;
+  color:var(--leise); font-size:14px;
+}
+.leerzeile{color:var(--leise); font-size:14px; margin:0; font-family:"Source Serif 4",Georgia,serif}
+
+/* ---- Regler -------------------------------------------------------- */
+.preset{
+  display:block; width:100%; text-align:left; background:var(--surface);
+  border:1px solid var(--linie); border-radius:12px; padding:13px 14px; margin-bottom:10px;
+}
+.preset[aria-pressed="true"]{border-color:var(--teal); box-shadow:inset 0 0 0 1px var(--teal)}
+.preset h3{margin:0 0 3px; font-size:16px; font-weight:600}
+.preset p{margin:0; font-size:14px; color:var(--leise); font-family:"Source Serif 4",Georgia,serif}
+.preset .stellung{
+  margin-top:8px; font-size:11px; color:var(--leise); letter-spacing:.02em;
+  line-height:1.45; word-break:break-word;
+}
+
+.regler{border-top:1px solid var(--linie); padding:14px 0 4px}
+.regler:first-child{border-top:0}
+.regler h3{margin:0; font-size:15px; font-weight:600; display:flex; align-items:center; gap:8px}
+.regler .frage{
+  margin:2px 0 9px; font-size:14px; color:var(--leise);
+  font-family:"Source Serif 4",Georgia,serif;
+}
+.wahl{display:flex; flex-wrap:wrap; gap:6px}
+.wahl button{
+  background:transparent; border:1px solid var(--linie-stark); border-radius:8px;
+  padding:7px 11px; font-size:13.5px; color:var(--leise);
+}
+.wahl button[aria-pressed="true"]{
+  border-color:var(--teal); color:var(--teal); font-weight:500;
+  background:color-mix(in srgb,var(--teal) 8%,transparent);
+}
+.hilfe{
+  margin:9px 0 0; font-size:13px; color:var(--leise); font-family:"Source Serif 4",Georgia,serif;
+  text-wrap:pretty;
+}
+
+/* ---- Protokoll ----------------------------------------------------- */
+.laufzeile{
+  display:flex; gap:12px; align-items:baseline; padding:11px 0;
+  border-top:1px solid var(--linie);
+}
+.laufzeile:first-of-type{border-top:0}
+.laufzeile .name{flex:1; min-width:0; font-size:15px; font-weight:500}
+.laufzeile .name span{display:block; font-weight:400; font-size:12px; color:var(--leise)}
+.laufzeile .werte{
+  flex:none; display:flex; gap:12px; font-variant-numeric:tabular-nums; text-align:right;
+}
+.laufzeile .werte div{font-size:16px; font-weight:600}
+.laufzeile .werte div span{display:block; font-size:10px; font-weight:400; color:var(--leise);
+  letter-spacing:.06em; text-transform:uppercase}
+.laufzeile.jetzt .name{color:var(--teal)}
+
+.fbzeile{padding:10px 0; border-top:1px solid var(--linie); font-size:14px}
+.fbzeile:first-of-type{border-top:0}
+.fbzeile .meta{
+  font-size:11px; color:var(--leise); letter-spacing:.04em; text-transform:uppercase;
+  display:flex; gap:8px; align-items:center; margin-bottom:3px; flex-wrap:wrap;
+}
+.fbzeile .punkt{width:7px; height:7px; border-radius:50%; flex:none}
+.fbzeile p{margin:0; font-family:"Source Serif 4",Georgia,serif}
+.ausgabe{
+  width:100%; height:180px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px; background:var(--paper); border:1px solid var(--linie-stark);
+  border-radius:8px; padding:9px; white-space:pre; overflow:auto;
+}
+
+/* ---- Bogen (modal) ------------------------------------------------- */
+.bogen-bg{position:fixed; inset:0; background:rgba(32,35,31,.42); z-index:40; border:0; width:100%}
+.bogen{
+  position:fixed; z-index:41; left:0; right:0; bottom:0;
+  background:var(--surface); border-radius:16px 16px 0 0;
+  padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px));
+  max-height:86%; overflow:auto; border-top:1px solid var(--linie);
+}
+.bogen-in{max-width:590px; margin:0 auto}
+.bogen h2{
+  margin:0 0 4px; font-family:"Source Serif 4",Georgia,serif; font-size:21px;
+  font-weight:600; text-wrap:balance;
+}
+.bogen .lead{
+  margin:0; font-size:14.5px; color:var(--leise); font-family:"Source Serif 4",Georgia,serif;
+  text-wrap:pretty;
+}
+
+/* ---- Die Leiste unten ---------------------------------------------- */
+.leiste{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  background:var(--paper); border-top:1px solid var(--linie);
+  padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));
+}
+.leiste-in{
+  max-width:620px; margin:0 auto; display:flex; gap:10px; align-items:center;
+}
+.leiste .notiz{
+  flex:1; text-align:left; background:var(--surface); border:1px solid var(--linie-stark);
+  border-radius:999px; padding:9px 14px; font-size:13.5px; color:var(--leise);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.leiste .zaehlung{
+  flex:none; font-size:11px; color:var(--leise); font-variant-numeric:tabular-nums;
+  letter-spacing:.04em; text-align:right; line-height:1.3;
+}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+</style>
+
+<header class="kopf">
+  <div class="kopf-in">
+    <div class="kopf-reihe" id="kopfreihe"></div>
+    <nav class="orte" id="orte" aria-label="Orte"></nav>
+  </div>
+</header>
+
+<main id="blatt" tabindex="-1"></main>
+
+<div class="leiste">
+  <div class="leiste-in" id="leiste"></div>
+</div>
+
+<div id="bogenraum"></div>
+
+<script type="module" src="./app.js"></script>
