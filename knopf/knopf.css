@@ -1,0 +1,169 @@
+/* =====================================================================
+   Der Zählknopf — Darstellung
+
+   Alle Farben kommen aus Merkmalen, die die App setzt. Das Modul bringt
+   nur Voreinstellungen mit, damit es allein lauffähig ist; eine App
+   überschreibt sie auf ihrem eigenen Grund:
+
+     --zk-grund    Fläche des Knopfes
+     --zk-linie    Zellenrand im Ruhezustand
+     --zk-an       eine Zelle, die zählt
+     --zk-ueber    eine Zelle jenseits des Rahmens
+     --zk-text     Schrift auf dem Knopf
+     --zk-neben    Schrift darunter
+     --zk-hoehe    Kantenlänge der Fläche
+
+   Die Form entscheidet das Merkmal `data-form` an der Wurzel, die
+   Richtung `data-richtung`. Beides setzt knopf.js.
+   ===================================================================== */
+
+.zk {
+  --zk-grund: #EFEBE1;
+  --zk-linie: #CFC8B7;
+  --zk-an: #A66E55;
+  --zk-ueber: #8C4F36;
+  --zk-text: #20231F;
+  --zk-neben: #6E7263;
+  --zk-hoehe: 190px;
+  --zk-spalten: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.zk-knopf {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: var(--zk-hoehe);
+  margin: 0 auto;
+  padding: 10px;
+  border: 1px solid var(--zk-linie);
+  border-radius: 18px;
+  background: var(--zk-grund);
+  color: var(--zk-text);
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.zk-knopf:active { transform: translateY(1px); }
+.zk-knopf:focus-visible { outline: 2px solid var(--zk-an); outline-offset: 3px; }
+
+/* Die Zellen liegen unter der Zahl, nicht daneben: der Knopf ist die
+   Anzeige, nicht ihr Rahmen. */
+.zk-flaeche {
+  position: absolute;
+  inset: 10px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(var(--zk-spalten), 1fr);
+}
+.zk-flaeche[hidden] { display: none; }
+
+.zk-zelle {
+  border: 1px solid var(--zk-linie);
+  border-radius: 6px;
+  background: transparent;
+  transition: background-color .22s ease, border-color .22s ease;
+}
+.zk-zelle[hidden] { display: none; }
+.zk-zelle.an {
+  background: color-mix(in srgb, var(--zk-an) calc(52% + var(--zk-kraft, 1) * 30%), transparent);
+  border-color: var(--zk-an);
+}
+.zk-zelle.ueber {
+  background: var(--zk-ueber);
+  border-color: var(--zk-ueber);
+}
+
+.zk-mitte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 6px;
+}
+.zk-zahl {
+  font-size: 46px;
+  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.zk[data-leer="true"] .zk-zahl { opacity: .38; }
+.zk-wort { font-size: 13px; opacity: .78; text-wrap: balance; }
+.zk-wort:empty { display: none; }
+
+.zk-neben {
+  margin: 0;
+  font-size: 13px;
+  color: var(--zk-neben);
+  text-align: center;
+  text-wrap: pretty;
+}
+.zk-neben[hidden] { display: none; }
+
+/* ---- Form: Punktreihe ----------------------------------------------
+   Kein Raster über die ganze Fläche, sondern eine Reihe am Fuß. Der
+   Knopf bleibt dabei ein Knopf und wird nicht selbst zur Anzeige —
+   das ist der Unterschied zur Teilung, und genau der wird verglichen. */
+.zk[data-form="punkte"] .zk-flaeche {
+  inset: auto 12px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+.zk[data-form="punkte"] .zk-zelle {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex: none;
+}
+.zk[data-form="punkte"] .zk-mitte { transform: translateY(-12px); }
+
+/* ---- Form: Ring -----------------------------------------------------
+   Die Zellen stehen auf einem Kreis, die Fläche in der Mitte bleibt
+   leer. Ein offener Kreis: Raum, kein Ring, der voll werden will. */
+.zk[data-form="ring"] .zk-flaeche { display: block; }
+.zk[data-form="ring"] .zk-zelle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
+  transform: rotate(var(--zk-winkel, 0deg)) translateY(calc(var(--zk-hoehe) / -2 + 26px));
+}
+
+/* ---- Form: Große Taste ---------------------------------------------
+   Eine Fläche, eine Zahl. Am wenigsten Reibung, am wenigsten Bild. */
+.zk[data-form="taste"] .zk-knopf {
+  background: var(--zk-an);
+  border-color: var(--zk-an);
+  color: #FFFDF7;
+  aspect-ratio: auto;
+  max-height: none;
+  padding: 34px 16px;
+}
+.zk[data-form="taste"] .zk-zahl { font-size: 54px; opacity: 1; }
+.zk[data-form="taste"][data-leer="true"] .zk-zahl { opacity: .72; }
+
+/* ---- Verbrauchen ----------------------------------------------------
+   Die leeren Zellen sind hier die Aussage, nicht die vollen: sie sind
+   der Raum, der noch da ist. Deshalb stehen sie deutlicher als im
+   Füll-Modus, wo Leeres nur Noch-nicht bedeutet. */
+.zk[data-richtung="verbrauchen"] .zk-zelle { border-color: color-mix(in srgb, var(--zk-linie) 100%, transparent); }
+.zk[data-richtung="verbrauchen"][data-ueber="true"] .zk-knopf { border-color: var(--zk-ueber); }
+
+@media (prefers-reduced-motion: reduce) {
+  .zk-zelle { transition: none; }
+}

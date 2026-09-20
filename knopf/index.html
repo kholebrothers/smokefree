@@ -1,0 +1,185 @@
+<title>Zählknopf-Tuner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="./knopf.css">
+<style>
+/* =====================================================================
+   Werkbank für ein einzelnes Bedienelement. Absichtlich technischer als
+   die Apps, die den Knopf später einsetzen: hier soll man die Mechanik
+   sehen, nicht die Stimmung.
+   ===================================================================== */
+:root{
+  --grund:#F3F1EC; --blatt:#FFFDF8; --tinte:#1E211C; --leise:#6C7064;
+  --linie:#E0DBD0; --linie-stark:#CBC4B4; --marke:#2F5B5E; --warm:#A66E55;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --grund:#15170F; --blatt:#1E211B; --tinte:#E8E5D9; --leise:#9AA08C;
+  --linie:#2C312A; --linie-stark:#3C4239; --marke:#7BB0B3; --warm:#C98D72;
+}}
+:root[data-theme="dark"]{
+  --grund:#15170F; --blatt:#1E211B; --tinte:#E8E5D9; --leise:#9AA08C;
+  --linie:#2C312A; --linie-stark:#3C4239; --marke:#7BB0B3; --warm:#C98D72;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--grund); color:var(--tinte);
+  font:15px/1.5 Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+}
+button{font:inherit; color:inherit; cursor:pointer}
+:focus-visible{outline:2px solid var(--marke); outline-offset:2px; border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+main{max-width:600px; margin:0 auto; padding:16px 16px 40px}
+header{max-width:600px; margin:0 auto; padding:18px 16px 4px}
+h1{font-size:20px; margin:0 0 3px; letter-spacing:-.01em}
+.unterzeile{
+  margin:0 0 14px; color:var(--leise); font-size:14.5px;
+  font-family:"Source Serif 4",Georgia,serif; text-wrap:pretty;
+}
+
+.karte{
+  background:var(--blatt); border:1px solid var(--linie); border-radius:12px;
+  padding:14px; margin-bottom:12px;
+}
+.karte-kopf{display:flex; align-items:baseline; gap:8px; margin-bottom:11px}
+.rubrik{
+  margin:0; font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--leise); font-weight:600;
+}
+.stand-rechts{margin-left:auto; font-size:12px; color:var(--leise); font-variant-numeric:tabular-nums}
+
+/* Der Knopf bekommt die Farben dieser Seite. */
+#buehne .zk{
+  --zk-grund:var(--grund); --zk-linie:var(--linie-stark); --zk-an:var(--warm);
+  --zk-ueber:color-mix(in srgb,var(--warm) 74%, #000); --zk-text:var(--tinte);
+  --zk-neben:var(--leise); --zk-hoehe:200px;
+}
+
+.reihe{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+.reihe button{
+  flex:1 1 0; min-width:92px; background:transparent; border:1px solid var(--linie-stark);
+  border-radius:9px; padding:9px 10px; font-size:14px; color:var(--leise);
+}
+.reihe button.stark{border-color:var(--marke); color:var(--marke); font-weight:500}
+
+.regler{border-top:1px solid var(--linie); padding:13px 0 3px}
+.regler:first-of-type{border-top:0; padding-top:0}
+.regler h3{margin:0 0 1px; font-size:14.5px; font-weight:600}
+.regler .frage{
+  margin:0 0 8px; font-size:13.5px; color:var(--leise);
+  font-family:"Source Serif 4",Georgia,serif;
+}
+.wahl{display:flex; flex-wrap:wrap; gap:6px}
+.wahl button{
+  background:transparent; border:1px solid var(--linie-stark); border-radius:8px;
+  padding:6px 11px; font-size:13.5px; color:var(--leise);
+}
+.wahl button[aria-pressed="true"]{
+  border-color:var(--marke); color:var(--marke); font-weight:500;
+  background:color-mix(in srgb,var(--marke) 8%,transparent);
+}
+.hilfe{
+  margin:8px 0 0; font-size:13px; color:var(--leise);
+  font-family:"Source Serif 4",Georgia,serif; text-wrap:pretty;
+}
+
+table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+th,td{padding:5px 6px; text-align:right; font-size:13px; border-top:1px solid var(--linie)}
+th{
+  color:var(--leise); font-weight:600; font-size:10.5px; letter-spacing:.07em;
+  text-transform:uppercase; border-top:0;
+}
+td:first-child,th:first-child{text-align:left}
+tr.jetzt td{background:color-mix(in srgb,var(--marke) 10%,transparent); font-weight:600}
+tr.jetzt td:first-child{border-radius:5px 0 0 5px}
+tr.jetzt td:last-child{border-radius:0 5px 5px 0}
+.tabellenrahmen{overflow-x:auto}
+
+.fb-auf{
+  margin-left:auto; flex:none; width:24px; height:24px; border-radius:50%;
+  background:transparent; border:1px solid var(--linie-stark); color:var(--leise);
+  font-size:11px; line-height:1; display:grid; place-items:center;
+}
+.fb-auf[aria-expanded="true"]{border-color:var(--marke); color:var(--marke)}
+.fb{margin-top:11px; padding-top:11px; border-top:1px dashed var(--linie-stark)}
+.fb[hidden]{display:none}
+.fb textarea{
+  width:100%; margin-top:8px; background:var(--grund); border:1px solid var(--linie-stark);
+  border-radius:8px; padding:9px; font:inherit; font-size:14.5px; resize:vertical;
+}
+.merken{
+  margin-top:9px; width:100%; background:var(--marke); color:#FFFDF8; border:0;
+  border-radius:9px; padding:10px; font-size:14.5px; font-weight:500;
+}
+.notizen{margin-top:12px}
+.notiz{padding:9px 0; border-top:1px solid var(--linie); font-size:14px}
+.notiz .meta{
+  font-size:10.5px; color:var(--leise); letter-spacing:.05em; text-transform:uppercase;
+  margin-bottom:2px;
+}
+.notiz p{margin:0; font-family:"Source Serif 4",Georgia,serif}
+.leer{margin:0; color:var(--leise); font-size:14px; font-family:"Source Serif 4",Georgia,serif}
+</style>
+
+<header>
+  <h1>Zählknopf-Tuner</h1>
+  <p class="unterzeile">Ein Bedienelement allein auf dem Tisch. Der Knopf trägt
+    seinen Zustand selbst — er teilt sich in so viele Zellen, wie die Stufe
+    hergibt, und teilt sich neu, sobald sie fällt.</p>
+</header>
+
+<main>
+  <section class="karte">
+    <div class="karte-kopf">
+      <h2 class="rubrik">Der Knopf</h2>
+      <button class="fb-auf" data-fb="knopf" aria-expanded="false" aria-label="Rückmeldung zum Knopf">○</button>
+      <span class="stand-rechts" id="stufenstand"></span>
+    </div>
+    <div id="buehne"></div>
+    <div class="reihe">
+      <button data-act="minus">− Eins</button>
+      <button data-act="null">Zurück auf null</button>
+    </div>
+    <div class="reihe" id="spruenge"></div>
+    <div class="fb" data-fbfeld="knopf" hidden></div>
+  </section>
+
+  <section class="karte">
+    <div class="karte-kopf">
+      <h2 class="rubrik">Einsatz</h2>
+      <span class="stand-rechts">Vorlage wählen</span>
+    </div>
+    <div class="wahl" id="einsaetze"></div>
+    <p class="hilfe" id="einsatzhilfe"></p>
+  </section>
+
+  <section class="karte">
+    <div class="karte-kopf">
+      <h2 class="rubrik">Schrauben</h2>
+      <button class="fb-auf" data-fb="regler" aria-expanded="false" aria-label="Rückmeldung zu den Reglern">○</button>
+    </div>
+    <div id="regler"></div>
+    <div class="fb" data-fbfeld="regler" hidden></div>
+  </section>
+
+  <section class="karte">
+    <div class="karte-kopf">
+      <h2 class="rubrik">Die Gruppen</h2>
+      <span class="stand-rechts">der gewählten Leiter</span>
+    </div>
+    <div class="tabellenrahmen"><table id="gruppen"></table></div>
+    <p class="hilfe">Jede Gruppe beginnt auf einer Stufe und ist so lang wie
+      die vorige. Die Zeile, die hervorsteht, ist die, in der der Knopf
+      gerade steht.</p>
+  </section>
+
+  <section class="karte">
+    <div class="karte-kopf"><h2 class="rubrik">Rückmeldungen</h2>
+      <span class="stand-rechts" id="fbzahl">0</span></div>
+    <div id="notizen"></div>
+  </section>
+</main>
+
+<script type="module" src="./tuner.js"></script>

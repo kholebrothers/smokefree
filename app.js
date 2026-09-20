@@ -22,6 +22,7 @@ import {
   neuerLauf, leererTag, tagVon, ladeLokal, sichereLokal, stellungKurz,
   schreibeLauf, schreibeRueckmeldung, datenbank,
 } from "./tuner.js";
+import { zaehlknopf } from "./knopf/knopf.js";
 
 /* ---- Zustand ------------------------------------------------------- */
 
@@ -100,6 +101,49 @@ function render(){
     Z.ort === "regler" ? reglerHtml() : Z.ort === "protokoll" ? protokollHtml() : tagHtml();
   document.getElementById("leiste").innerHTML = leisteHtml();
   document.getElementById("bogenraum").innerHTML = Z.bogen ? bogenHtml() : "";
+  teilungEinhaengen();
+}
+
+/* ---- Die Teilung ----------------------------------------------------
+   Der Zählknopf aus knopf/ ist ein DOM-Knoten, kein HTML-Schnipsel: er
+   wird einmal gebaut und danach nur gesetzt, damit Übergänge und
+   Tastaturfokus jede Änderung überleben. Deshalb steht im innerHTML nur
+   ein leerer Halter, und der Knoten kommt danach hinein.
+
+   Der Rahmen kommt nicht von Hand, sondern aus der Stufenlesart: beim
+   Korridor die Stufe unter der niedrigsten gehaltenen, beim Budget die
+   für heute gesetzte, sonst die kleinste, die den Stand fasst. */
+var ZK = null;
+function teilungEinhaengen(){
+  var halter = document.getElementById("zk-halter");
+  if (!halter) return;
+  var t = tag(), n = anzahl(t);
+  var st = stufenStand(n, stellung().stufe, tageRueckwaerts(lauf().tage, datum(), 14), t.budget);
+  if (!ZK){
+    ZK = zaehlknopf({
+      form: "teilung", richtung: "verbrauchen", leiter: LEITER,
+      beschriftung: function(x){ return x === 1 ? "Zigarette" : "Zigaretten"; },
+      nebentext: function(){ return st.wort; },
+      beiTipp: function(){ rauchen(); render(); },
+    });
+  }
+  if (ZK.wurzel.parentNode !== halter) halter.replaceChildren(ZK.wurzel);
+  ZK.setze({ n: n, rahmen: st.korridor || st.rahmen });
+}
+
+/* Eine Zigarette zählen. Steht hier für sich, weil sie aus zwei
+   Richtungen gerufen wird: aus dem Klick-Handler und aus dem Knopf. */
+function rauchen(){
+  var t = tag(), jetzt = Date.now();
+  var neuTag = zaehle(t, jetzt);
+  neuTag.gezaehlt = true;
+  var n = anzahl(neuTag), s = stellung();
+  if (nachfrageFaellig(n, s.anlass)){
+    neuTag.offen = (neuTag.offen || []).concat([{ nr:n, ab: faelligAb(s.wann, jetzt) }]);
+    if (s.wann === "sofort" && s.form === "bogen"){ Z.bogen = { art:"nachfrage", nr:n }; Z.bogenWerte = {}; }
+  }
+  setzeTag(neuTag);
+  if (navigator.vibrate) try { navigator.vibrate(12); } catch(e){}
 }
 
 function kopfHtml(l, d){
@@ -168,20 +212,28 @@ function zaehlerKarte(){
   h.push(fbPanel("zaehler"));
 
   h.push('<div class="zaehler">');
-  h.push('<span class="zahl-gross' + (n ? "" : " null") + '">' + n + '</span>');
-  h.push('<span class="einheit">' + (n === 1 ? "Zigarette" : "Zigaretten") + '</span>');
+  /* Bei der Teilung trägt der Knopf die Zahl selbst — darüber stünde
+     dieselbe Auskunft ein zweites Mal. */
+  if (s.knopf !== "teilung"){
+    h.push('<span class="zahl-gross' + (n ? "" : " null") + '">' + n + '</span>');
+    h.push('<span class="einheit">' + (n === 1 ? "Zigarette" : "Zigaretten") + '</span>');
+  }
 
-  if (s.knopf === "punkte") h.push(punkteHtml(n, st));
+  if (s.knopf === "teilung") h.push('<div id="zk-halter"></div>');
+  else if (s.knopf === "punkte") h.push(punkteHtml(n, st));
   else if (s.knopf === "ring") h.push(ringHtml(n, st));
 
-  h.push('<p class="stufenwort' + (st.ueber ? " ueber" : "") + '">' + esc(st.wort) + '</p>');
+  if (s.knopf !== "teilung")
+    h.push('<p class="stufenwort' + (st.ueber ? " ueber" : "") + '">' + esc(st.wort) + '</p>');
   h.push('</div>');
 
-  h.push('<div class="' + (s.knopf === "taste" ? "tastefeld" : "") + '" style="margin-top:14px">');
-  h.push('<button class="tippen' + (s.knopf === "taste" ? " taste" : "") + '" data-act="rauch">' +
-    (s.knopf === "taste" ? "Eine" : "+ Eine") +
-    '<span class="sub">' + (s.knopf === "taste" ? "antippen" : "") + '</span></button>');
-  h.push('</div>');
+  if (s.knopf !== "teilung"){
+    h.push('<div class="' + (s.knopf === "taste" ? "tastefeld" : "") + '" style="margin-top:14px">');
+    h.push('<button class="tippen' + (s.knopf === "taste" ? " taste" : "") + '" data-act="rauch">' +
+      (s.knopf === "taste" ? "Eine" : "+ Eine") +
+      '<span class="sub">' + (s.knopf === "taste" ? "antippen" : "") + '</span></button>');
+    h.push('</div>');
+  }
 
   h.push('<div class="unterknoepfe">');
   var letzte = (t.zigaretten || [])[n - 1];
@@ -663,19 +715,7 @@ document.addEventListener("click", function(ev){
   if (act === "bogen-zu"){ Z.bogen = null; Z.bogenWerte = {}; sichern(); return render(); }
 
   /* ---- Zählen ---- */
-  if (act === "rauch"){
-    var t = tag(), jetzt = Date.now();
-    var neuTag = zaehle(t, jetzt);
-    neuTag.gezaehlt = true;
-    var n = anzahl(neuTag), s = stellung();
-    if (nachfrageFaellig(n, s.anlass)){
-      neuTag.offen = (neuTag.offen || []).concat([{ nr:n, ab: faelligAb(s.wann, jetzt) }]);
-      if (s.wann === "sofort" && s.form === "bogen"){ Z.bogen = { art:"nachfrage", nr:n }; Z.bogenWerte = {}; }
-    }
-    setzeTag(neuTag);
-    if (navigator.vibrate) try { navigator.vibrate(12); } catch(e){}
-    return render();
-  }
+  if (act === "rauch"){ rauchen(); return render(); }
   if (act === "zurueck"){ setzeTag(nimmZurueck(tag(), Date.now())); return render(); }
   if (act === "keine"){ setzeTag({ gezaehlt: !tag().gezaehlt }); return render(); }
 

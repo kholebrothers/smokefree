@@ -26,11 +26,12 @@ export const REGLER = [
   {
     id: "knopf", name: "Knopfform", frage: "Womit zählt man eine Zigarette?",
     werte: [
-      { v: "punkte", t: "Punktreihe", hilfe: "Eine Reihe Plätze, einer füllt sich pro Tipp — wie die count-Zeile im lifetracker." },
+      { v: "teilung", t: "Teilung", hilfe: "Der Knopf selbst ist die Anzeige: er teilt sich in die Zellen der Stufe, und jede Zigarette nimmt eine weg. Ist die letzte weg, teilt er sich neu. Aus der Morgenpraxis, Richtung umgedreht." },
+      { v: "punkte", t: "Punktreihe", hilfe: "Eine Reihe Plätze neben dem Knopf — die count-Zeile aus dem lifetracker. Der Knopf bleibt ein Knopf." },
       { v: "ring",   t: "Offener Kreis", hilfe: "Ein Zeichen, das Raum meint statt Aufgabe — kein Fortschrittsring. Spuren kommen hinein und wieder heraus." },
       { v: "taste",  t: "Große Taste", hilfe: "Eine Fläche, eine Zahl. Am wenigsten Reibung, am wenigsten Bild." },
     ],
-    ahnung: "punkte",
+    ahnung: "teilung",
   },
   {
     id: "stufe", name: "Fibonacci-Stufe", frage: "Was bedeutet die Leiter unter dem Knopf?",
@@ -117,7 +118,7 @@ export const PRESETS = [
   {
     id: "leiter", name: "Leiter runter",
     these: "Die Leiter trägt das Ganze: sie beschreibt, sie rahmt, und sie taktet die Fragen.",
-    stellung: { knopf: "punkte", stufe: "korridor", anlass: "stichprobe", form: "angebot",
+    stellung: { knopf: "teilung", stufe: "korridor", anlass: "stichprobe", form: "angebot",
                 wann: "gleich", vorhaben: "an", bogen: "zwei" },
   },
   {

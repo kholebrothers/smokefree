@@ -41,6 +41,46 @@ Bemerkung.
     tuner.js     Regler, Voreinstellungen, Läufe, Speicher
     app.js       Verdrahtung: ein Zustand, ein render(), ein Klick-Handler
 
+    knopf/       Der Zählknopf — eigenständiges Modul, siehe unten
+
+## `knopf/` — der Zählknopf
+
+Ein wiederverwendbares Bedienelement mit eigener Werkbank. Es kennt keine
+Zigarette: es kennt eine Zahl, eine Leiter und eine Richtung. Was gezählt
+wird, weiß nur, wer es einsetzt.
+
+    knopf/knopf.js    Mechanik und Darstellung — ohne Texte, ohne Fachbegriffe
+    knopf/knopf.css   Farben über Merkmale, die die App setzt
+    knopf/index.html  Eigener Tuner: der Knopf allein auf dem Tisch
+    knopf/tuner.js    dessen Regler, Einsatz-Vorlagen und Rückmeldungen
+
+**Die Idee:** es gibt keine Fortschrittsanzeige. Das Ding, das man drückt,
+*ist* der Zustand. Der Knopf teilt sich in so viele Zellen, wie die aktuelle
+Stufe hergibt, und teilt sich neu, sobald sie fällt — wieder fast leer, nur
+feiner gerastert. Daraus folgt eine Dosierung, die niemand einstellen muss:
+auf Stufe 3 verändert ein Tipp ein Drittel, auf Stufe 21 ein Dreizehntel.
+
+Jede Gruppe beginnt auf einer Stufe und ist so lang wie die vorige:
+
+    Stufe    1   2   3     5     8      13      21       34
+    Zellen   1   1   2     3     5       8      13       21
+    deckt    1   2   3–4   5–7   8–12   13–20   21–33    34–54
+
+Zwei Richtungen, dieselbe Darstellung: `fuellen` (jeder Tipp füllt eine Zelle —
+für Gezähltes, das erwünscht ist) und `verbrauchen` (die Zellen sind der Raum,
+jeder Tipp nimmt einen weg — für Gezähltes, das schlicht geschieht). smokefree
+benutzt `verbrauchen`: es geht um Bewusstsein über das eigene Verhalten, nicht
+um Reduktion, und über den Rahmen hinaus bricht nichts — der Knopf teilt sich
+neu, und das war's.
+
+Die Mechanik stammt aus **Morgenpraxis** (`static/app.js`, `fibGroupSizes` und
+`renderFractalButton`), einem eigenen Projekt. Dort heißt sie „Fraktal";
+selbstähnlich ist daran nichts, deshalb hier `teilung`.
+
+`knopf.js` bringt `fibonacciBis` und `stufeFuer` noch einmal mit, obwohl beide
+auch in `kern.js` stehen. Das ist kein Versehen: das Modul soll ohne diesen
+Ordner lauffähig sein. Wer beides ändert, ändert es an zwei Stellen.
+
 Kein Bundler, kein Build-Schritt — dieselbe Regel wie in `kur-core`. Native
 ES-Module, `<script type="module">`, fertig.
 
